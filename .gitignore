@@ -1,0 +1,8 @@
+env/
+__pycache__/
+.DS_Store
+image_cache/
+social/output/
+ArtistCatalog.pdf
+.claude/
+untitled folder/
