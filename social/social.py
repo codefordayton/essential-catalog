@@ -157,7 +157,7 @@ def render_social_image(artwork_bytes, artist_name, summary, size, output_path, 
         frame_top = int(height * 0.68)
     elif width > height:
         # Facebook landscape: frame at bottom
-        frame_top = int(height * 0.52)
+        frame_top = int(height * 0.42)
     else:
         # Instagram square: bottom quarter
         frame_top = int(height * 0.68)
@@ -204,7 +204,7 @@ def render_social_image(artwork_bytes, artist_name, summary, size, output_path, 
 
     # Summary text
     name_bbox = font_name.getbbox(artist_name)
-    summary_y = name_y + (name_bbox[3] - name_bbox[1]) + int(margin * 0.4)
+    summary_y = name_y + (name_bbox[3] - name_bbox[1]) + int(margin * 0.6)
 
     # URL line
     url_size = max(14, int(width * 0.022))

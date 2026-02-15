@@ -48,9 +48,9 @@ def generate_summaries(text_file_path, output_file_path):
 
     # Summary lengths for different social media formats
     length_configs = {
-        "short": "STRICT LIMIT: 1 sentence, maximum 90 characters total. This is for a small banner.",
-        "medium": "STRICT LIMIT: 1-2 sentences, maximum 160 characters total. This is for a square post.",
-        "long": "STRICT LIMIT: 2-3 sentences, maximum 280 characters total. This is for a tall story.",
+        "short": "STRICT LIMIT: 1-2 sentences, maximum 120 characters total. This is for a small banner.",
+        "medium": "STRICT LIMIT: 2-3 sentences, maximum 220 characters total. This is for a square post.",
+        "long": "STRICT LIMIT: 2-4 sentences, maximum 350 characters total. This is for a tall story.",
     }
 
     # Now generate summaries for each artist
