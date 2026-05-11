@@ -1,35 +1,90 @@
+import argparse
 import json
+import re
+import requests
 import anthropic
 
+CLAUDE_DEFAULT_MODEL = 'claude-sonnet-4-6'
+OLLAMA_DEFAULT_MODEL = 'llama3.1'
+OLLAMA_BASE_URL = 'http://localhost:11434'
 
-def generate_summaries(text_file_path, output_file_path):
-    """
-    Generate concise summaries from artist texts using Claude and save to file.
+LENGTH_CONFIGS = {
+    "short": "STRICT LIMIT: 1-2 sentences, maximum 120 characters total. This is for a small banner.",
+    "medium": "STRICT LIMIT: 2-3 sentences, maximum 220 characters total. This is for a square post.",
+    "long": "STRICT LIMIT: 2-4 sentences, maximum 350 characters total. This is for a tall story.",
+}
 
-    Requires ANTHROPIC_API_KEY environment variable.
-    """
+
+def build_prompt(artist_name, combined_text):
+    return f"""Write three summaries of this artist for social media posts. Each summary should be compelling and focus on their unique artistic perspective and style.
+
+Rules:
+- Do NOT start with "Meet" or "Discover"
+- Describe the artist and their work directly
+- The artist's name is: {artist_name} — use this exact name (never substitute a placeholder or different name)
+- Count characters carefully and stay within limits
+
+Length requirements:
+- short: {LENGTH_CONFIGS['short']}
+- medium: {LENGTH_CONFIGS['medium']}
+- long: {LENGTH_CONFIGS['long']}
+
+Artist text:
+{combined_text}
+
+Respond in this exact JSON format (no markdown, no code fences):
+{{"short": "...", "medium": "...", "long": "..."}}"""
+
+
+def extract_json(text):
+    """Extract the first complete JSON object from a response string."""
+    start = text.find('{')
+    if start == -1:
+        raise ValueError("No JSON object found in response")
+    end = text.rfind('}')
+    if end == -1:
+        raise ValueError("No closing brace found in response")
+    return json.loads(text[start:end + 1])
+
+
+def call_claude(prompt, model):
     client = anthropic.Anthropic()
+    response = client.messages.create(
+        model=model,
+        max_tokens=512,
+        messages=[{"role": "user", "content": prompt}],
+    )
+    return extract_json(response.content[0].text)
 
-    summaries = {}
+
+def call_ollama(prompt, model):
+    response = requests.post(
+        f"{OLLAMA_BASE_URL}/api/chat",
+        json={
+            "model": model,
+            "messages": [{"role": "user", "content": prompt}],
+            "stream": False,
+        },
+        timeout=120,
+    )
+    response.raise_for_status()
+    return extract_json(response.json()["message"]["content"])
+
+
+def parse_artist_texts(text_file_path):
+    artist_texts = {}
     current_artist = None
     current_type = None
     current_text = []
-
-    # First, collect all texts for each artist
-    artist_texts = {}
 
     with open(text_file_path, 'r') as f:
         for line in f:
             line = line.rstrip()
             if line.startswith('=== ') and line.endswith(' ==='):
-                # Save previous entry if exists
                 if current_artist and current_type:
-                    if current_artist not in artist_texts:
-                        artist_texts[current_artist] = {}
-                    artist_texts[current_artist][current_type] = '\n'.join(current_text)
+                    artist_texts.setdefault(current_artist, {})[current_type] = '\n'.join(current_text)
 
-                # Parse new header
-                header = line[4:-4]  # Remove '=== ' and ' ==='
+                header = line[4:-4]
                 if ' Bio' in header:
                     current_artist = header[:-4].strip()
                     current_type = 'bio'
@@ -40,73 +95,60 @@ def generate_summaries(text_file_path, output_file_path):
             elif line:
                 current_text.append(line)
 
-    # Handle final entry
     if current_artist and current_type:
-        if current_artist not in artist_texts:
-            artist_texts[current_artist] = {}
-        artist_texts[current_artist][current_type] = '\n'.join(current_text)
+        artist_texts.setdefault(current_artist, {})[current_type] = '\n'.join(current_text)
 
-    # Summary lengths for different social media formats
-    length_configs = {
-        "short": "STRICT LIMIT: 1-2 sentences, maximum 120 characters total. This is for a small banner.",
-        "medium": "STRICT LIMIT: 2-3 sentences, maximum 220 characters total. This is for a square post.",
-        "long": "STRICT LIMIT: 2-4 sentences, maximum 350 characters total. This is for a tall story.",
-    }
+    return artist_texts
 
-    # Now generate summaries for each artist
+
+def generate_summaries(text_file_path, output_file_path, provider='claude', model=None):
+    if model is None:
+        model = CLAUDE_DEFAULT_MODEL if provider == 'claude' else OLLAMA_DEFAULT_MODEL
+
+    print(f"Provider: {provider}, Model: {model}")
+
+    # Load existing summaries so we don't regenerate
+    try:
+        with open(output_file_path, 'r') as f:
+            summaries = json.load(f)
+        print(f"Loaded {len(summaries)} existing summaries from {output_file_path}")
+    except (FileNotFoundError, json.JSONDecodeError):
+        summaries = {}
+
+    artist_texts = parse_artist_texts(text_file_path)
+
     for artist, texts in artist_texts.items():
+        existing = summaries.get(artist)
+        if existing and any(existing.get(k) for k in ('short', 'medium', 'long')):
+            print(f"Skipping {artist} (already has summary)")
+            continue
+
         combined_text = ""
         if 'bio' in texts:
             combined_text += texts['bio'] + "\n\n"
         if 'statement' in texts:
             combined_text += texts['statement']
 
-        if combined_text:
-            # Generate all three lengths in a single API call for efficiency
-            prompt = f"""Write three summaries of this artist for social media posts. Each summary should be compelling and focus on their unique artistic perspective and style.
+        if not combined_text:
+            continue
 
-Rules:
-- Do NOT start with "Meet" or "Discover"
-- Describe the artist and their work directly
-- Use the artist's full name in each summary
-- Count characters carefully and stay within limits
+        prompt = build_prompt(artist, combined_text)
 
-Length requirements:
-- short: {length_configs['short']}
-- medium: {length_configs['medium']}
-- long: {length_configs['long']}
+        try:
+            if provider == 'claude':
+                artist_summaries = call_claude(prompt, model)
+            else:
+                artist_summaries = call_ollama(prompt, model)
 
-Artist text:
-{combined_text}
+            summaries[artist] = artist_summaries
+            print(f"Generated summaries for {artist} "
+                  f"(short={len(artist_summaries['short'])}ch, "
+                  f"medium={len(artist_summaries['medium'])}ch, "
+                  f"long={len(artist_summaries['long'])}ch)")
+        except Exception as e:
+            print(f"Error generating summaries for {artist}: {str(e)}")
+            summaries[artist] = {"short": "", "medium": "", "long": ""}
 
-Respond in this exact JSON format (no markdown, no code fences):
-{{"short": "...", "medium": "...", "long": "..."}}"""
-
-            try:
-                response = client.messages.create(
-                    model="claude-sonnet-4-5-20250929",
-                    max_tokens=512,
-                    messages=[
-                        {"role": "user", "content": prompt},
-                        {"role": "assistant", "content": "{"},
-                    ],
-                )
-                result = "{" + response.content[0].text.strip()
-                # Strip anything after the closing brace
-                brace_end = result.rfind('}')
-                if brace_end != -1:
-                    result = result[:brace_end + 1]
-                artist_summaries = json.loads(result)
-                summaries[artist] = artist_summaries
-                print(f"Generated summaries for {artist} "
-                      f"(short={len(artist_summaries['short'])}ch, "
-                      f"medium={len(artist_summaries['medium'])}ch, "
-                      f"long={len(artist_summaries['long'])}ch)")
-            except Exception as e:
-                print(f"Error generating summaries for {artist}: {str(e)}")
-                summaries[artist] = {"short": "", "medium": "", "long": ""}
-
-    # Save summaries to file
     with open(output_file_path, 'w') as f:
         json.dump(summaries, f, indent=2)
 
@@ -114,4 +156,23 @@ Respond in this exact JSON format (no markdown, no code fences):
 
 
 if __name__ == "__main__":
-    generate_summaries('text/all_texts.txt', 'text/artist_summaries.json')
+    parser = argparse.ArgumentParser(description="Generate artist summaries for social media")
+    parser.add_argument(
+        '--provider',
+        choices=['claude', 'ollama'],
+        default='claude',
+        help='LLM provider to use (default: claude)',
+    )
+    parser.add_argument(
+        '--model',
+        default=None,
+        help=f'Model name (default: {CLAUDE_DEFAULT_MODEL} for Claude, {OLLAMA_DEFAULT_MODEL} for Ollama)',
+    )
+    args = parser.parse_args()
+
+    generate_summaries(
+        'text/all_texts.txt',
+        'text/artist_summaries.json',
+        provider=args.provider,
+        model=args.model,
+    )

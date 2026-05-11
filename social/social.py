@@ -14,7 +14,6 @@ from lib.text import load_summaries
 PLATFORMS = {
     'instagram': (1080, 1080, 'medium'),
     'facebook': (1200, 630, 'short'),
-    'story': (1080, 1920, 'long'),
 }
 
 FONT_BOLD = 'Raleway-Bold.ttf'
@@ -152,14 +151,11 @@ def render_social_image(artwork_bytes, artist_name, summary, size, output_path, 
 
     # Determine frame area based on aspect ratio
     margin = int(width * 0.05)
-    if height > width:
-        # Story: frame in bottom third
-        frame_top = int(height * 0.68)
-    elif width > height:
-        # Facebook landscape: frame at bottom
+    if width > height:
+        # Facebook landscape
         frame_top = int(height * 0.42)
     else:
-        # Instagram square: bottom quarter
+        # Instagram square
         frame_top = int(height * 0.68)
 
     frame_bottom = height - margin
@@ -190,10 +186,8 @@ def render_social_image(artwork_bytes, artist_name, summary, size, output_path, 
         draw.text((x + shadow_offset, y + shadow_offset), text, font=font, fill=(0, 0, 0, 100))
         draw.text((x, y), text, font=font, fill=fill)
 
-    # Scale font sizes relative to canvas width; smaller for non-Story formats
-    is_story = height > width
-    name_size = max(24, int(width * (0.055 if is_story else 0.042)))
-    summary_size = max(14, int(width * (0.028 if is_story else 0.022)))
+    name_size = max(24, int(width * 0.042))
+    summary_size = max(14, int(width * 0.022))
 
     font_name = ImageFont.truetype(FONT_BOLD, name_size)
     font_summary = ImageFont.truetype(FONT_BOLD, summary_size)
