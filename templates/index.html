@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Social Image Generator — Essential Artists Dayton</title>
+    <link href="https://fonts.googleapis.com/css2?family=Raleway:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: 'Raleway', Georgia, sans-serif;
+            background: #f5f4f1;
+            color: #1a1a1a;
+            min-height: 100vh;
+        }
+
+        header {
+            background: #1a1a1a;
+            color: white;
+            padding: 1.25rem 2rem;
+            text-align: center;
+        }
+
+        header h1 {
+            font-size: 0.85rem;
+            font-weight: 700;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+        }
+
+        .container {
+            max-width: 580px;
+            margin: 0 auto;
+            padding: 3rem 1.5rem 4rem;
+        }
+
+        .step { display: none; }
+        .step.active { display: block; }
+
+        h2 {
+            font-size: 1.6rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+            line-height: 1.2;
+        }
+
+        .subtitle {
+            color: #666;
+            line-height: 1.55;
+            margin-bottom: 2.5rem;
+        }
+
+        label {
+            display: block;
+            font-size: 0.72rem;
+            font-weight: 700;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            color: #555;
+            margin-bottom: 0.5rem;
+        }
+
+        input[type="url"],
+        textarea {
+            width: 100%;
+            padding: 0.85rem 1rem;
+            border: 1.5px solid #d0cec9;
+            border-radius: 6px;
+            font-family: inherit;
+            font-size: 0.95rem;
+            background: white;
+            color: #1a1a1a;
+            transition: border-color 0.15s;
+        }
+
+        input[type="url"]:focus,
+        textarea:focus {
+            outline: none;
+            border-color: #1a1a1a;
+        }
+
+        textarea {
+            min-height: 130px;
+            resize: vertical;
+            line-height: 1.6;
+        }
+
+        .hint {
+            font-size: 0.76rem;
+            color: #999;
+            margin-top: 0.45rem;
+            line-height: 1.4;
+        }
+
+        .field { margin-bottom: 1.5rem; }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            padding: 0.85rem 1.75rem;
+            border: none;
+            border-radius: 6px;
+            font-family: inherit;
+            font-size: 0.88rem;
+            font-weight: 700;
+            letter-spacing: 0.04em;
+            cursor: pointer;
+            text-decoration: none;
+            transition: background 0.15s, opacity 0.15s;
+        }
+
+        .btn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+        .btn-primary { background: #1a1a1a; color: white; }
+        .btn-primary:hover:not(:disabled) { background: #333; }
+
+        .btn-ghost {
+            background: transparent;
+            color: #666;
+            border: 1.5px solid #ccc;
+        }
+        .btn-ghost:hover { border-color: #999; color: #1a1a1a; }
+
+        .btn-download {
+            background: #2a5d8a;
+            color: white;
+            width: 100%;
+            margin-top: 0.75rem;
+            padding: 0.75rem;
+            font-size: 0.82rem;
+        }
+        .btn-download:hover { background: #1d4466; }
+
+        .btn-row {
+            display: flex;
+            gap: 0.875rem;
+            align-items: center;
+            margin-top: 2rem;
+        }
+
+        .spinner {
+            display: inline-block;
+            width: 1rem;
+            height: 1rem;
+            border: 2px solid rgba(255,255,255,0.35);
+            border-top-color: white;
+            border-radius: 50%;
+            animation: spin 0.65s linear infinite;
+        }
+
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .error-box {
+            background: #fff0f0;
+            border: 1px solid #f5c0c0;
+            color: #b00;
+            padding: 0.85rem 1rem;
+            border-radius: 6px;
+            margin-top: 1rem;
+            font-size: 0.88rem;
+            line-height: 1.45;
+            display: none;
+        }
+
+        .artist-card {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            padding: 1rem 1.1rem;
+            background: white;
+            border: 1.5px solid #e0ddd8;
+            border-radius: 8px;
+            margin-bottom: 2rem;
+        }
+
+        .artist-thumb {
+            width: 72px;
+            height: 72px;
+            object-fit: cover;
+            border-radius: 5px;
+            flex-shrink: 0;
+            background: #e8e6e0;
+        }
+
+        .artist-name {
+            font-size: 1.05rem;
+            font-weight: 700;
+        }
+
+        .artist-url {
+            font-size: 0.78rem;
+            color: #999;
+            margin-top: 0.2rem;
+        }
+
+        .images-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.25rem;
+            margin-top: 1.5rem;
+        }
+
+        .image-card {
+            background: white;
+            border-radius: 8px;
+            overflow: hidden;
+            border: 1px solid #e0ddd8;
+        }
+
+        .image-card img {
+            width: 100%;
+            display: block;
+        }
+
+        .image-card-footer {
+            padding: 0.75rem 0.85rem 0.85rem;
+        }
+
+        .platform-label {
+            font-size: 0.7rem;
+            font-weight: 700;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            color: #888;
+        }
+
+        .divider {
+            border: none;
+            border-top: 1px solid #e0ddd8;
+            margin: 2.5rem 0 2rem;
+        }
+
+        .success-note {
+            font-size: 0.82rem;
+            color: #666;
+            line-height: 1.5;
+            margin-top: 1.5rem;
+        }
+
+        @media (max-width: 460px) {
+            .images-grid { grid-template-columns: 1fr; }
+            h2 { font-size: 1.3rem; }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Essential Artists Dayton — Social Image Generator</h1>
+    </header>
+
+    <div class="container">
+
+        <!-- Step 1: URL input -->
+        <div class="step active" id="step1">
+            <h2>Generate your social media images</h2>
+            <p class="subtitle">Enter your artist page URL to get branded Instagram and Facebook images, ready to post.</p>
+
+            <div class="field">
+                <label for="url-input">Your artist page URL</label>
+                <input type="url" id="url-input"
+                    placeholder="https://www.essentialartistsdayton.org/artist/your-name"
+                    autocomplete="off" autocorrect="off" spellcheck="false">
+                <p class="hint">Your URL starts with essentialartistsdayton.org/artist/</p>
+            </div>
+
+            <div class="error-box" id="step1-error"></div>
+
+            <div class="btn-row">
+                <button class="btn btn-primary" id="btn-extract" onclick="doExtract()">
+                    Continue &rarr;
+                </button>
+            </div>
+        </div>
+
+        <!-- Step 2: Edit summary -->
+        <div class="step" id="step2">
+            <div class="artist-card" id="artist-card">
+                <img class="artist-thumb" id="preview-thumb" src="" alt="">
+                <div>
+                    <div class="artist-name" id="preview-name"></div>
+                    <div class="artist-url">essentialartistsdayton.org</div>
+                </div>
+            </div>
+
+            <div class="field">
+                <label for="summary-instagram">Instagram description</label>
+                <textarea id="summary-instagram"
+                    placeholder="Describe your work and artistic practice in 2–3 sentences. This has more space, so you can include a bit more detail about your inspiration or process."></textarea>
+                <p class="hint">Instagram (1080&times;1080) — 2–3 sentences.</p>
+            </div>
+
+            <div class="field">
+                <label for="summary-facebook">Facebook description</label>
+                <textarea id="summary-facebook" style="min-height: 90px;"
+                    placeholder="A shorter, punchy sentence or two about your work."></textarea>
+                <p class="hint">Facebook (1200&times;630) — 1–2 sentences. Less space, so keep it tight.</p>
+            </div>
+
+            <div class="error-box" id="step2-error"></div>
+
+            <div class="btn-row">
+                <button class="btn btn-ghost" onclick="goBack()">&larr; Back</button>
+                <button class="btn btn-primary" id="btn-generate" onclick="doGenerate()">
+                    Create Images &rarr;
+                </button>
+            </div>
+        </div>
+
+        <!-- Step 3: Download -->
+        <div class="step" id="step3">
+            <h2>Your images are ready</h2>
+            <p class="subtitle">Download and post directly to Instagram and Facebook.</p>
+
+            <div class="images-grid">
+                <div class="image-card">
+                    <img id="img-instagram" src="" alt="Instagram image">
+                    <div class="image-card-footer">
+                        <div class="platform-label">Instagram &middot; 1080&times;1080</div>
+                        <a id="dl-instagram" class="btn btn-download" href="#" download="instagram.png">
+                            &darr;&nbsp; Download
+                        </a>
+                    </div>
+                </div>
+                <div class="image-card">
+                    <img id="img-facebook" src="" alt="Facebook image">
+                    <div class="image-card-footer">
+                        <div class="platform-label">Facebook &middot; 1200&times;630</div>
+                        <a id="dl-facebook" class="btn btn-download" href="#" download="facebook.png">
+                            &darr;&nbsp; Download
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <p class="success-note">Tip: on mobile, press and hold an image to save it directly to your photos.</p>
+
+            <hr class="divider">
+            <button class="btn btn-ghost" onclick="restart()">&larr; Generate another</button>
+        </div>
+
+    </div>
+
+    <script>
+        const state = {};
+
+        function show(stepId) {
+            document.querySelectorAll('.step').forEach(el => el.classList.remove('active'));
+            document.getElementById(stepId).classList.add('active');
+            window.scrollTo(0, 0);
+        }
+
+        function setError(stepId, msg) {
+            const el = document.getElementById(stepId + '-error');
+            el.textContent = msg;
+            el.style.display = msg ? 'block' : 'none';
+        }
+
+        function setLoading(btnId, loading, defaultText) {
+            const btn = document.getElementById(btnId);
+            btn.disabled = loading;
+            btn.innerHTML = loading
+                ? '<span class="spinner"></span>&nbsp; Loading&hellip;'
+                : defaultText;
+        }
+
+        async function doExtract() {
+            const url = document.getElementById('url-input').value.trim();
+            if (!url) { setError('step1', 'Please enter your artist page URL.'); return; }
+            setError('step1', '');
+            setLoading('btn-extract', true, 'Continue &rarr;');
+
+            try {
+                const res = await fetch('/api/extract', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ url }),
+                });
+                const data = await res.json();
+                if (data.error) { setError('step1', data.error); return; }
+
+                Object.assign(state, {
+                    name: data.name,
+                    image_url: data.image_url,
+                    url_slug: data.url_slug,
+                });
+
+                document.getElementById('preview-name').textContent = data.name;
+                document.getElementById('preview-thumb').src = data.image_url;
+                document.getElementById('summary-instagram').value = data.summary_medium || '';
+                document.getElementById('summary-facebook').value = data.summary_short || '';
+                if (data.summary_note) setError('step2', data.summary_note);
+
+                show('step2');
+            } catch (e) {
+                setError('step1', 'Network error — please try again.');
+            } finally {
+                setLoading('btn-extract', false, 'Continue &rarr;');
+            }
+        }
+
+        async function doGenerate() {
+            const summary_medium = document.getElementById('summary-instagram').value.trim();
+            const summary_short = document.getElementById('summary-facebook').value.trim();
+            setError('step2', '');
+            setLoading('btn-generate', true, 'Create Images &rarr;');
+
+            try {
+                const res = await fetch('/api/generate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        name: state.name,
+                        image_url: state.image_url,
+                        url_slug: state.url_slug,
+                        summary_medium,
+                        summary_short,
+                    }),
+                });
+                const data = await res.json();
+                if (data.error) { setError('step2', data.error); return; }
+
+                const sid = data.session_id;
+                const ts = Date.now();  // cache-bust on regenerate
+                document.getElementById('img-instagram').src = `/image/${sid}/instagram?t=${ts}`;
+                document.getElementById('img-facebook').src = `/image/${sid}/facebook?t=${ts}`;
+                document.getElementById('dl-instagram').href = `/image/${sid}/instagram`;
+                document.getElementById('dl-facebook').href = `/image/${sid}/facebook`;
+
+                show('step3');
+            } catch (e) {
+                setError('step2', 'Network error — please try again.');
+            } finally {
+                setLoading('btn-generate', false, 'Create Images &rarr;');
+            }
+        }
+
+        function goBack() {
+            setError('step2', '');
+            show('step1');
+        }
+
+        function restart() {
+            document.getElementById('url-input').value = '';
+            show('step1');
+        }
+
+        document.getElementById('url-input').addEventListener('keydown', e => {
+            if (e.key === 'Enter') doExtract();
+        });
+    </script>
+</body>
+</html>

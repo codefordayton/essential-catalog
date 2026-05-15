@@ -116,7 +116,7 @@ def truncate_to_sentences(text, font, max_width, max_lines):
     return text
 
 
-def render_social_image(artwork_bytes, artist_name, summary, size, output_path, artist_url=''):
+def render_social_image(artwork_bytes, artist_name, summary, size, output_path=None, artist_url=''):
     """Render a social media image for one artist at the given size."""
     width, height = size
 
@@ -225,9 +225,15 @@ def render_social_image(artwork_bytes, artist_name, summary, size, output_path, 
         url_y = frame_bottom - int(margin * 0.4) - url_line_height
         draw_text_with_shadow((text_left, url_y), url_text, font=font_url, fill=(255, 255, 255, 200))
 
-    # Save
-    os.makedirs(os.path.dirname(output_path), exist_ok=True)
-    canvas.convert('RGB').save(output_path, 'PNG')
+    # Save to path or return bytes
+    if output_path is not None:
+        os.makedirs(os.path.dirname(output_path), exist_ok=True)
+        canvas.convert('RGB').save(output_path, 'PNG')
+    else:
+        buf = BytesIO()
+        canvas.convert('RGB').save(buf, 'PNG')
+        buf.seek(0)
+        return buf.read()
 
 
 def safe_name(name):
